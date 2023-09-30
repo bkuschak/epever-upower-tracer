@@ -64,7 +64,7 @@ DCkwhToday = up.readReg(DCkwhToday)
 #print (body_solar)
 
 # print csv format
-print('%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n' %
+print('%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f' %
         (timestamp.timestamp(),
         PVvolt, PVamps, PVwatt, PVkwhTotal, PVkwhToday,
         DCvolt, DCamps, DCwatt, DCkwhTotal, DCkwhToday,
