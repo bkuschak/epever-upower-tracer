@@ -22,8 +22,9 @@ PVwatt = round(PVvolt * PVamps, 2)
 PVkwhTotal = up.readReg(PVkwhTotal);
 PVkwhToday = up.readReg(PVkwhToday);
 
-BAvolt = up.readReg(BAvolt)
+BAvolt = up.readReg(BAvolt) + FloatNo
 BAamps = up.readReg(BAamps) + FloatNo
+BAwatt = round(BAvolt * BAamps, 2)
 BAperc = up.readReg(BAperc) * 100
 BAtemp = up.readReg(BAtemp)
 
@@ -49,6 +50,7 @@ DCkwhToday = up.readReg(DCkwhToday)
 #            # Battery
 #            "BV": BAvolt,
 #            "BI": BAamps,
+#            "BW": BAwatt,
 #            "BSOC": BAperc,
 #            "BTEMP": BAtemp,
 #            "CTEMP": ControllerTemp,
@@ -64,11 +66,11 @@ DCkwhToday = up.readReg(DCkwhToday)
 #print (body_solar)
 
 # print csv format
-print('%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f' %
+print('%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f' %
         (timestamp.timestamp(),
         PVvolt, PVamps, PVwatt, PVkwhTotal, PVkwhToday,
         DCvolt, DCamps, DCwatt, DCkwhTotal, DCkwhToday,
-        BAvolt, BAamps, BAperc, BAtemp, ControllerTemp))
+        BAvolt, BAamps, BAwatt, BAperc, BAtemp, ControllerTemp))
 
 
 
