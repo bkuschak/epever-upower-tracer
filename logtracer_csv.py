@@ -1,12 +1,65 @@
 #!/usr/bin/python3
 
-import sys
+import array
 import datetime
-import time
+import fcntl
+import getopt
 import minimalmodbus
+import sys
+import time
 from SolarTracer import *
 
-up = SolarTracer()
+# Defaults
+#serial_port = '/dev/ttyS5'
+serial_port = '/dev/ttyXRUSB1'
+native_rs485 = False
+
+# Print to stdout unless the user specifies a file name.
+log_filename = None
+
+def usage(argv):
+    print(  "Usage: %s [-N] [-p <port>] [-f <filename>]\n"
+            " -p <port>       Use serial port. Ex: /dev/ttyS5\n"
+            " -N              Configure native RS485 settings for serial port\n"
+            " -f <filename>   Append output to a file.\n" % argv)
+    sys.exit()
+
+argv = sys.argv[1:]
+opts, args = getopt.getopt(argv, "hp:f:N")
+for opt, arg in opts:
+    if opt in ['-p']:
+        serial_port = arg
+    elif opt in ['-f']:
+        log_filename = arg
+    elif opt in ['-N']:
+        native_rs485 = True
+    elif opt in ['-h']:
+        usage(sys.argv[0])
+    else:
+        usage(sys.argv[0])
+
+if native_rs485:
+    # minimalmodbus < 2.1 does not support initializing device with an RS485 pySerial object. 
+    # As a workaround, use this method below.  Set native RS485 mode in the driver.
+    # The driver seems to remember these settings even after the file is closed.
+    # Then later when minimalmodbus opens the port, these RS485 settings remain in
+    # effect.
+    # Adpated from https://github.com/pyserial/pyserial/blob/master/serial/serialposix.py#L171
+    TIOCSRS485 = 0x542F
+    SER_RS485_ENABLED = 0b00000001
+    SER_RS485_RTS_ON_SEND = 0b00000010
+    SER_RS485_RTS_AFTER_SEND = 0b00000100
+    SER_RS485_RX_DURING_TX = 0b00010000
+    buf = array.array('i', [0] * 8)  # flags, delaytx, delayrx, padding
+    # RTS# seems to be inverted.
+    buf[0] |= SER_RS485_ENABLED
+    buf[0] &= ~SER_RS485_RTS_ON_SEND
+    buf[0] |= SER_RS485_RTS_AFTER_SEND
+    with open(serial_port, 'w') as fd:
+        fcntl.ioctl(fd, TIOCSRS485, buf)
+
+# Open the EPEVER.
+up = SolarTracer(device=serial_port)
 if (up.connect() < 0):
 	print ("Could not connect to the device")
 	exit -2
@@ -14,63 +67,36 @@ if (up.connect() < 0):
 # get timestamps
 timestamp = datetime.datetime.utcnow()
 
-FloatNo = 0.0
+# TODO error handling.  Code returns -2 on IOError.
 
-PVvolt = up.readReg(PVvolt) + FloatNo
-PVamps = up.readReg(PVamps) + FloatNo
-PVwatt = round(PVvolt * PVamps, 2)
-PVkwhTotal = up.readReg(PVkwhTotal);
-PVkwhToday = up.readReg(PVkwhToday);
+PVvolt = float(up.readReg(PVvolt))
+PVamps = float(up.readReg(PVamps))
+PVwatt = round(PVvolt * PVamps, 3)
+PVkwhTotal = float(up.readReg(PVkwhTotal));
+PVkwhToday = float(up.readReg(PVkwhToday));
 
-BAvolt = up.readReg(BAvolt) + FloatNo
-BAamps = up.readReg(BAamps) + FloatNo
-BAwatt = round(BAvolt * BAamps, 2)
-BAperc = up.readReg(BAperc) * 100
-BAtemp = up.readReg(BAtemp)
+BAvolt = float(up.readReg(BAvolt))
+BAamps = float(up.readReg(BAamps))
+BAwatt = round(BAvolt * BAamps, 3)
+BAperc = float(up.readReg(BAperc)) * 100
+BAtemp = float(up.readReg(BAtemp))
 
-ControllerTemp = up.readReg(ControllerTemp)
+ControllerTemp = float(up.readReg(ControllerTemp))
 
-DCvolt = up.readReg(DCvolt) + FloatNo
-DCamps = round(up.readReg(DCamps), 2) + FloatNo
-DCwatt = round(DCvolt * DCamps, 2) + FloatNo
-DCkwhTotal = up.readReg(DCkwhTotal)
-DCkwhToday = up.readReg(DCkwhToday)
+DCvolt = float(up.readReg(DCvolt))
+DCamps = round(float(up.readReg(DCamps)), 3)
+DCwatt = round(DCvolt * DCamps, 3)
+DCkwhTotal = float(up.readReg(DCkwhTotal))
+DCkwhToday = float(up.readReg(DCkwhToday))
 
-## form a data record
-#body_solar = [
-#    {
-#        "t": timestamp,
-#        "d": {
-#            # Solar panel
-#            "PVV": PVvolt,
-#            "PVI": PVamps,
-#            "PVW": PVwatt,
-#            "PVKWh": PVkwhTotal,
-#            "PVKWh24": PVkwhToday,
-#            # Battery
-#            "BV": BAvolt,
-#            "BI": BAamps,
-#            "BW": BAwatt,
-#            "BSOC": BAperc,
-#            "BTEMP": BAtemp,
-#            "CTEMP": ControllerTemp,
-#            # Load
-#            "LV": DCvolt,
-#            "LI": DCamps,
-#            "LW": DCwatt,
-#            "LKWh": DCkwhTotal,
-#            "LKWh24": DCkwhToday
-#        }
-#    }
-#]
-#print (body_solar)
-
-# print csv format
-print('%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f' %
+# output csv format
+output = ('%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f' %
         (timestamp.timestamp(),
         PVvolt, PVamps, PVwatt, PVkwhTotal, PVkwhToday,
         DCvolt, DCamps, DCwatt, DCkwhTotal, DCkwhToday,
         BAvolt, BAamps, BAwatt, BAperc, BAtemp, ControllerTemp))
 
-
-
+if log_filename:
+    print(output, file=open(log_filename, 'a'))
+else:
+    print(output)
