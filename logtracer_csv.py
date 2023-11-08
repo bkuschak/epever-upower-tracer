@@ -5,14 +5,25 @@ import datetime
 import fcntl
 import getopt
 import minimalmodbus
+import os
 import sys
 import time
 from SolarTracer import *
 
 # Defaults
-#serial_port = '/dev/ttyS5'
-serial_port = '/dev/ttyXRUSB1'
-native_rs485 = False
+#serial_port = '/dev/ttyXRUSB1'
+#native_rs485 = False
+serial_port = '/dev/ttyS5'
+native_rs485 = True
+write_to_db = False
+csv_format = False
+
+# InfluxDB v1
+influxdb_host = '192.168.2.154'
+influxdb_port = 8086
+influxdb_name = 'mydb'
+influxdb_meas_name = 'solar'
+influxdb_tag_station = 'gblco'
 
 # Print to stdout unless the user specifies a file name.
 log_filename = None
@@ -20,15 +31,21 @@ log_filename = None
 def usage(argv):
     print(  "Usage: %s [-N] [-p <port>] [-f <filename>]\n"
             " -p <port>       Use serial port. Ex: /dev/ttyS5\n"
-            " -N              Configure native RS485 settings for serial port\n"
+            " -N              Configure native RS485 settings for serial port.\n"
+            " -c              Output CSV format.\n"
+            " -d              Write to InfluxDB database.\n"
             " -f <filename>   Append output to a file.\n" % argv)
     sys.exit()
 
 argv = sys.argv[1:]
-opts, args = getopt.getopt(argv, "hp:f:N")
+opts, args = getopt.getopt(argv, "hcdp:f:N")
 for opt, arg in opts:
     if opt in ['-p']:
         serial_port = arg
+    elif opt in ['-c']:
+        csv_format = True
+    elif opt in ['-d']:
+        write_to_db = True
     elif opt in ['-f']:
         log_filename = arg
     elif opt in ['-N']:
@@ -89,14 +106,49 @@ DCwatt = round(DCvolt * DCamps, 3)
 DCkwhTotal = float(up.readReg(DCkwhTotal))
 DCkwhToday = float(up.readReg(DCkwhToday))
 
-# output csv format
-output = ('%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f' %
-        (timestamp.timestamp(),
-        PVvolt, PVamps, PVwatt, PVkwhTotal, PVkwhToday,
-        DCvolt, DCamps, DCwatt, DCkwhTotal, DCkwhToday,
-        BAvolt, BAamps, BAwatt, BAperc, BAtemp, ControllerTemp))
+data_timestamp = timestamp.timestamp()
 
-if log_filename:
-    print(output, file=open(log_filename, 'a'))
-else:
-    print(output)
+if csv_format:
+    # output csv format
+    output = ('%.3f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f' %
+            (timestamp.timestamp(),
+            PVvolt, PVamps, PVwatt, PVkwhTotal, PVkwhToday,
+            DCvolt, DCamps, DCwatt, DCkwhTotal, DCkwhToday,
+            BAvolt, BAamps, BAwatt, BAperc, BAtemp, ControllerTemp))
+
+    if log_filename:
+        print(output, file=open(log_filename, 'a'))
+    else:
+        print(output)
+
+if write_to_db:
+    # send to influxdb, for example:
+    # curl -i -XPOST 'http://192.168.2.154:8086/write?db=mydb' --data-binary 'cpu_load_short,host=server02,region=us-west value=2.64'
+    msg =   "%s," \
+            "station=%s " \
+            "pv_v=%.2f," \
+            "pv_i=%.2f," \
+            "pv_w=%.2f," \
+            "pv_kwh_total=%.2f," \
+            "pv_kwh_today=%.2f," \
+            "ld_v=%.2f," \
+            "ld_i=%.2f," \
+            "ld_w=%.2f," \
+            "ld_kwh_total=%.2f," \
+            "ld_kwh_today=%.2f," \
+            "ba_v=%.2f," \
+            "ba_i=%.2f," \
+            "ba_w=%.2f," \
+            "ba_soc=%.2f," \
+            "ba_temp=%.2f," \
+            "ctrl_temp=%.2f " \
+            "%d" % \
+            (influxdb_meas_name, influxdb_tag_station, \
+             PVvolt, PVamps, PVwatt, PVkwhTotal, PVkwhToday, \
+             DCvolt, DCamps, DCwatt, DCkwhTotal, DCkwhToday, \
+             BAvolt, BAamps, BAwatt, BAperc, BAtemp, ControllerTemp, \
+             int(data_timestamp*1e9))
+    cmd = "curl -i -XPOST 'http://%s:%d/write?db=%s' --data-binary '%s'" % \
+            (influxdb_host, influxdb_port, influxdb_name, msg)
+    print(cmd)
+    os.system(cmd)
