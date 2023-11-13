@@ -93,7 +93,8 @@ PVkwhTotal = float(up.readReg(PVkwhTotal));
 PVkwhToday = float(up.readReg(PVkwhToday));
 
 BAvolt = float(up.readReg(BAvolt))
-BAamps = float(up.readReg(BAamps))
+#BAamps = float(up.readReg(BAamps))
+BAamps = float(up.readReg32(BAampsnetL)) / 256 # Use bipolar battery current instead
 BAwatt = round(BAvolt * BAamps, 3)
 BAperc = float(up.readReg(BAperc)) * 100
 BAtemp = float(up.readReg(BAtemp))
@@ -148,7 +149,6 @@ if write_to_db:
              DCvolt, DCamps, DCwatt, DCkwhTotal, DCkwhToday, \
              BAvolt, BAamps, BAwatt, BAperc, BAtemp, ControllerTemp, \
              int(data_timestamp*1e9))
-    cmd = "curl -i -XPOST 'http://%s:%d/write?db=%s' --data-binary '%s'" % \
+    cmd = "curl -s -i -XPOST 'http://%s:%d/write?db=%s' --data-binary '%s'" % \
             (influxdb_host, influxdb_port, influxdb_name, msg)
-    print(cmd)
     os.system(cmd)

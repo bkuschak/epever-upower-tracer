@@ -18,7 +18,9 @@ PVstat = 0x3201
 
 # battery
 BAvolt = 0x3104
-BAamps = 0x3105
+BAamps = 0x3105 # charging current, positive only
+BAampsnetL = 0x331B # net battery current, pos or neg.
+BAampsnetH = 0x331C
 BAwattL = 0x3106
 BAwattH = 0x3107
 BAtemp = 0x3110
@@ -145,11 +147,27 @@ class SolarTracer:
 	    self.instrument.mode = minimalmodbus.MODE_RTU
 	    return 0
 
-	# read informational register
+	# read informational register, 16 bit
 	def readReg(self,register) -> float:
 	    try:
-	            reading = self.instrument.read_register(register, 2, 4)
+	            reading = self.instrument.read_register(register, 2, 4, signed=True)
 	            return (reading + FloatConv)
+	    except IOError:
+	            return -2
+
+	# read informational register, 32 bit, little endian
+	def readReg32(self,register) -> float:
+	    try:
+	            #lo = self.instrument.read_register(register, 0, 4, signed=True)
+	            #hi = self.instrument.read_register(register+1, 0, 4, signed=True)
+	            #lo = self.instrument.read_register(register, 0, 4)
+	            #hi = self.instrument.read_register(register+1, 0, 4)
+	            #reading = (hi * 65536 + lo) / 100.00
+	            reading = self.instrument.read_long(register, 4, byteorder=minimalmodbus.BYTEORDER_LITTLE)
+	            print("0x%08x\n" % (reading))
+	            reading = int(reading & 0xFFFFFFFF)
+	            reading = reading | (-(reading & 0x80000000))
+	            return reading / 100.0 
 	    except IOError:
 	            return -2
 
@@ -158,6 +176,17 @@ class SolarTracer:
 	    try:
 	            reading = self.instrument.read_register(register, decimals, func)
 	            return reading
+	    except IOError:
+	            return -2
+
+	# read parameter
+	def readParam32(self,register,decimals=2,func=3):
+	    try:
+	            reading = self.instrument.read_long(register, func, byteorder=minimalmodbus.BYTEORDER_LITTLE)
+	            print("0x%08x\n" % (reading))
+	            reading = int(reading & 0xFFFFFFFF)
+	            reading = reading | (-(reading & 0x80000000))
+	            return reading / 100.0 
 	    except IOError:
 	            return -2
 

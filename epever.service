@@ -1,0 +1,19 @@
+[Unit]
+Description=Read data from the EPEVER MPPT solar charger and send to a database server.
+After=local-fs.target sysinit.target network-online.target
+DefaultDependencies=no
+
+# Run as seiscape user since minimalmodbus is installed only for that user
+
+[Service]
+User=seiscape
+Group=seiscape
+StandardOutput=syslog
+StandardError=syslog
+ExecStart=/bin/bash -c "while true; do /usr/bin/python3 /usr/bin/logtracer_csv.py -d; sleep 120; done"
+Restart=always
+RestartSec=15
+TimeoutSec=10
+
+[Install]
+WantedBy=multi-user.target
