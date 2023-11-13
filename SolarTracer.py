@@ -164,7 +164,6 @@ class SolarTracer:
 	            #hi = self.instrument.read_register(register+1, 0, 4)
 	            #reading = (hi * 65536 + lo) / 100.00
 	            reading = self.instrument.read_long(register, 4, byteorder=minimalmodbus.BYTEORDER_LITTLE)
-	            print("0x%08x\n" % (reading))
 	            reading = int(reading & 0xFFFFFFFF)
 	            reading = reading | (-(reading & 0x80000000))
 	            return reading / 100.0 
@@ -183,7 +182,6 @@ class SolarTracer:
 	def readParam32(self,register,decimals=2,func=3):
 	    try:
 	            reading = self.instrument.read_long(register, func, byteorder=minimalmodbus.BYTEORDER_LITTLE)
-	            print("0x%08x\n" % (reading))
 	            reading = int(reading & 0xFFFFFFFF)
 	            reading = reading | (-(reading & 0x80000000))
 	            return reading / 100.0 
