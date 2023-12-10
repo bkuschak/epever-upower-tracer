@@ -1,3 +1,5 @@
+all:
+
 install: epever.service logtracer_csv.py SolarTracer.py
 	install -m 755 logtracer_csv.py /usr/bin/
 	install -m 644 SolarTracer.py /usr/bin/
