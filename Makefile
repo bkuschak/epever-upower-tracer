@@ -9,8 +9,8 @@ start:
 	 systemctl daemon-reload
 	 systemctl enable epever
 	 systemctl start epever
-	 systemctl status epever
+	 systemctl status --no-pager epever
 
 stop:
 	 systemctl stop epever
-	 systemctl status epever
+	 systemctl status --no-pager epever
