@@ -19,7 +19,7 @@ write_to_db = False
 csv_format = False
 
 # InfluxDB v1
-influxdb_host = '192.168.2.154'
+influxdb_host = 'localhost'
 influxdb_port = 8086
 influxdb_name = 'mydb'
 influxdb_meas_name = 'solar'
