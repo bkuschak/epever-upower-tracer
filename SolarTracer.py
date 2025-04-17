@@ -163,9 +163,10 @@ class SolarTracer:
 	            #lo = self.instrument.read_register(register, 0, 4)
 	            #hi = self.instrument.read_register(register+1, 0, 4)
 	            #reading = (hi * 65536 + lo) / 100.00
-	            reading = self.instrument.read_long(register, 4, byteorder=minimalmodbus.BYTEORDER_LITTLE)
-	            reading = int(reading & 0xFFFFFFFF)
-	            reading = reading | (-(reading & 0x80000000))
+	            #reading = self.instrument.read_long(register, 4, byteorder=minimalmodbus.BYTEORDER_LITTLE)
+	            #reading = int(reading & 0xFFFFFFFF)
+	            #reading = reading | (-(reading & 0x80000000))
+	            reading = self.instrument.read_long(register, 4, signed=True, byteorder=minimalmodbus.BYTEORDER_LITTLE)
 	            return reading / 100.0 
 	    except IOError:
 	            return -2

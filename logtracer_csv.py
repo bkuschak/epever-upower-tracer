@@ -93,11 +93,16 @@ PVkwhTotal = float(up.readReg(PVkwhTotal));
 PVkwhToday = float(up.readReg(PVkwhToday));
 
 BAvolt = float(up.readReg(BAvolt))
-#BAamps = float(up.readReg(BAamps))
-BAamps = float(up.readReg32(BAampsnetL)) / 256 # Use bipolar battery current instead
+BAamps = float(up.readReg(BAampsnetL))	# Bipolar battery current.
+
 BAwatt = round(BAvolt * BAamps, 3)
 BAperc = float(up.readReg(BAperc)) * 100
 BAtemp = float(up.readReg(BAtemp))
+
+# BK - debugging BAamps problem
+#print('BAampsnet(L) (/100):', up.readReg32(BAampsnetL))
+#print('BAampsnetL (/100):', up.readReg(BAampsnetL))
+#print('BAampsnetH (/100):', up.readReg(BAampsnetH))
 
 ControllerTemp = float(up.readReg(ControllerTemp))
 
@@ -106,6 +111,10 @@ DCamps = round(float(up.readReg(DCamps)), 3)
 DCwatt = round(DCvolt * DCamps, 3)
 DCkwhTotal = float(up.readReg(DCkwhTotal))
 DCkwhToday = float(up.readReg(DCkwhToday))
+
+# FIXME - often shows ~100% or higher:
+if PVwatt > 0:
+	print('efficiency: ', round(100* (BAwatt + DCwatt) / PVwatt, 1))
 
 data_timestamp = timestamp.timestamp()
 
